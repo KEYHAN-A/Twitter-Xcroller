@@ -62,6 +62,10 @@ function createController() {
     smoothMultiplier: 1,
     targetMultiplier: 1,
     nextDriftAt: 0,
+    nextAdCheckAt: 0,
+    pendingAdSkipPx: 0,
+    lastAdSkipAt: 0,
+    adSkipCooldownMs: 2200,
     scrollCarry: 0,
     reloadTimer: null,
     startDelayTimer: null,
@@ -88,6 +92,7 @@ function createController() {
       state.startDelayTimer = null;
     }
     state.lastFrameTime = null;
+    state.pendingAdSkipPx = 0;
     state.scrollCarry = 0;
     state.nextReloadAt = null;
   }
@@ -106,6 +111,34 @@ function createController() {
       state.lastFrameTime = timestamp;
       state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
       return;
+    }
+
+    if (state.pendingAdSkipPx > 0) {
+      const deltaMsForSkip = Math.min(200, Math.max(0, timestamp - state.lastFrameTime));
+      const basePerMs = state.config.baseStepPx / Math.max(1, state.config.tickMs);
+      const maxSkipChunkPx = clamp(basePerMs * deltaMsForSkip * 8, 14, 42);
+      const chunk = Math.min(state.pendingAdSkipPx, maxSkipChunkPx);
+      window.scrollBy(0, chunk);
+      state.pendingAdSkipPx -= chunk;
+      state.lastFrameTime = timestamp;
+      state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
+      return;
+    }
+
+    if (timestamp >= state.nextAdCheckAt && timestamp - state.lastAdSkipAt >= state.adSkipCooldownMs) {
+      state.nextAdCheckAt = timestamp + randomBetween(900, 1400);
+      const adInView = findVisibleAdArticle();
+      if (adInView) {
+        const jumpDistance = clamp(adInView.rect.bottom + randomBetween(20, 55), 140, 620);
+        state.pendingAdSkipPx = jumpDistance;
+        state.lastAdSkipAt = timestamp;
+        // Debounce ad-skips so dense ad clusters do not create back-to-back jumps.
+        state.adSkipCooldownMs = Math.round(randomBetween(2200, 3200));
+        state.scrollCarry = 0;
+        state.lastFrameTime = timestamp;
+        state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
+        return;
+      }
     }
 
     // Keep real-time speed stable while still preventing huge jumps.
@@ -130,6 +163,41 @@ function createController() {
     }
 
     state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
+  }
+
+  function findVisibleAdArticle() {
+    const articles = document.querySelectorAll("article");
+    for (const article of articles) {
+      const rect = article.getBoundingClientRect();
+      if (rect.bottom < 60 || rect.top > window.innerHeight * 0.72) {
+        continue;
+      }
+      if (isLikelyAdArticle(article)) {
+        return { rect };
+      }
+    }
+    return null;
+  }
+
+  function isLikelyAdArticle(article) {
+    if (article.querySelector('[data-testid="placementTracking"]')) {
+      return true;
+    }
+
+    const spans = article.querySelectorAll("span");
+    for (const span of spans) {
+      const text = (span.textContent || "").trim();
+      if (text === "Ad" || text === "Promoted") {
+        return true;
+      }
+    }
+
+    const ariaLabel = (article.getAttribute("aria-label") || "").toLowerCase();
+    if (ariaLabel.includes("promoted")) {
+      return true;
+    }
+
+    return false;
   }
 
   function scheduleReload() {
@@ -190,8 +258,12 @@ function createController() {
     state.lastFrameTime = null;
     state.smoothMultiplier = 1;
     state.targetMultiplier = 1;
+    state.pendingAdSkipPx = 0;
+    state.lastAdSkipAt = 0;
+    state.adSkipCooldownMs = 2200;
     state.scrollCarry = 0;
     state.nextDriftAt = performance.now() + randomBetween(800, 1800);
+    state.nextAdCheckAt = performance.now() + randomBetween(500, 900);
     state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
     scheduleReload();
     notifyStatus();

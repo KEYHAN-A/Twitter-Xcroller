@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "Continuous Twitter Scroller",
-  "description": "Automatically scrolls X/Twitter and reloads with randomized timing to keep fresh posts flowing.",
+  "name": "X-Scroller",
+  "description": "Smoothly auto-scroll X/Twitter, refresh on randomized timing, and keep the feed fresh.",
   "version": "1.0.0",
   "permissions": [
     "storage",
@@ -17,7 +17,7 @@
   },
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Twitter Scroller"
+    "default_title": "X-Scroller"
   },
   "content_scripts": [
     {
