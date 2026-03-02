@@ -1,0 +1,45 @@
+# Architecture Overview
+
+X-Scroller has three runtime pieces: background service worker, content script, and popup UI.
+
+## Components
+
+## 1) `background.js`
+
+- Initializes default config during install.
+- Receives status updates from content scripts.
+- Updates per-tab badge text and color (`RUN`/`OFF`).
+
+## 2) `content.js`
+
+- Owns the automation controller for each X/Twitter page.
+- Loads config from `chrome.storage.sync`.
+- Runs:
+  - Smooth scroll animation loop (`requestAnimationFrame`)
+  - Randomized refresh scheduler (`setTimeout`)
+  - Optional promoted-post skip logic
+- Exposes message API:
+  - `cts:getStatus`
+  - `cts:start`
+  - `cts:stop`
+  - `cts:applyConfig`
+
+## 3) Popup (`popup.html`, `popup.js`, `popup.css`)
+
+- Reads/saves user config from `chrome.storage.sync`.
+- Sends control messages to active tab content script.
+- Shows current running state and countdown to next reload.
+
+## Data flow
+
+1. User updates settings in popup.
+2. Popup stores settings to `chrome.storage.sync`.
+3. Popup optionally pushes settings directly to active tab via `cts:applyConfig`.
+4. Content script updates runtime state and sends status updates.
+5. Background updates action badge for that tab.
+
+## Lifecycle and safety
+
+- Content script is guarded by a window-level singleton key (`__ctsTwitterScroller`).
+- Re-injection destroys prior controller instance before re-initializing.
+- Storage change events keep live tabs synced when settings change.
