@@ -14,8 +14,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - name: Download source archive
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          curl -fL \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/zipball/${{ github.sha }}" \
+            -o source.zip
+          unzip -q source.zip -d source
+          SOURCE_ROOT=$(ls -d source/* | head -n 1)
+          cp "$SOURCE_ROOT/manifest.json" .
+          cp "$SOURCE_ROOT/background.js" .
+          cp "$SOURCE_ROOT/content.js" .
+          cp "$SOURCE_ROOT/popup.html" .
+          cp "$SOURCE_ROOT/popup.css" .
+          cp "$SOURCE_ROOT/popup.js" .
 
       - name: Read extension version
         id: meta
