@@ -16,6 +16,7 @@ X-Scroller has three runtime pieces: background service worker, content script, 
 - Loads config from `chrome.storage.sync`.
 - Runs:
   - Smooth scroll animation loop (`requestAnimationFrame`)
+  - Debounced mouse-move interaction pause handling
   - Randomized refresh scheduler (`setTimeout`)
   - Optional promoted-post skip logic
 - Exposes message API:

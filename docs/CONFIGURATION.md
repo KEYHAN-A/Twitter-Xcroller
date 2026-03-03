@@ -43,3 +43,4 @@ On each cycle, the extension picks a random delay between these values and sched
 
 - Values are normalized and clamped in both popup and content logic.
 - If `maxReloadMinutes` is set below `minReloadMinutes`, it is auto-corrected.
+- Mouse movement temporarily pauses auto-scroll using a short debounce window so manual interaction is not interrupted.

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "X-Scroller",
-  "description": "Smoothly auto-scroll X/Twitter, refresh on randomized timing, and keep the feed fresh.",
+  "description": "Smooth auto-scroll for X/Twitter with mouse-interaction pause, smart refresh, and ad skipping.",
   "version": "1.0.0",
   "permissions": [
     "storage",

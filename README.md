@@ -1,6 +1,6 @@
 # X-Scroller
 
-`X-Scroller` is a Manifest V3 Chrome extension that keeps your X/Twitter timeline moving with smooth auto-scroll, randomized refresh, and optional promoted-post skipping.
+`X-Scroller` is a Manifest V3 Chrome extension that keeps your X/Twitter timeline moving with smooth auto-scroll, mouse-interaction-aware pause, randomized refresh, and optional promoted-post skipping.
 
 ## Why this project exists
 
@@ -10,6 +10,7 @@ X-Scroller provides a lightweight way to keep a timeline active while reducing r
 ## Features
 
 - Smooth continuous scrolling tuned for long sessions
+- Debounced mouse-move detection that pauses auto-scroll so you can interact
 - Randomized refresh interval (`minReloadMinutes` to `maxReloadMinutes`)
 - Optional preference for the in-feed **new posts** button before full reload
 - Promoted/ad post detection and buffered skip movement
@@ -45,6 +46,11 @@ X-Scroller provides a lightweight way to keep a timeline active while reducing r
 - No build step is required; this is plain JS/CSS/HTML.
 - The extension stores user settings in `chrome.storage.sync`.
 - The content script is designed to be idempotent and safely re-initializes itself per page context.
+
+## CI build artifact
+
+- Every push to `main` (and manual workflow runs) builds a zip bundle in GitHub Actions.
+- Download the extension package from the run artifacts named `extension-bundle-v<version>`.
 
 ## Limitations
 

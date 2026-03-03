@@ -12,6 +12,9 @@ const DEFAULT_CONFIG = {
   maxReloadMinutes: 8
 };
 
+const USER_INTERACTION_PAUSE_MS = 2500;
+const MOUSE_MOVE_DEBOUNCE_MS = 140;
+
 function clamp(value, min, max) {
   return Math.min(max, Math.max(min, value));
 }
@@ -69,7 +72,9 @@ function createController() {
     scrollCarry: 0,
     reloadTimer: null,
     startDelayTimer: null,
-    nextReloadAt: null
+    nextReloadAt: null,
+    interactionPausedUntil: 0,
+    mouseMoveDebounceTimer: null
   };
 
   function notifyStatus() {
@@ -91,10 +96,15 @@ function createController() {
       clearTimeout(state.startDelayTimer);
       state.startDelayTimer = null;
     }
+    if (state.mouseMoveDebounceTimer) {
+      clearTimeout(state.mouseMoveDebounceTimer);
+      state.mouseMoveDebounceTimer = null;
+    }
     state.lastFrameTime = null;
     state.pendingAdSkipPx = 0;
     state.scrollCarry = 0;
     state.nextReloadAt = null;
+    state.interactionPausedUntil = 0;
   }
 
   function runSmoothScrollFrame(timestamp) {
@@ -108,6 +118,12 @@ function createController() {
     }
 
     if (state.lastFrameTime == null) {
+      state.lastFrameTime = timestamp;
+      state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
+      return;
+    }
+
+    if (timestamp < state.interactionPausedUntil) {
       state.lastFrameTime = timestamp;
       state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
       return;
@@ -331,6 +347,28 @@ function createController() {
     notifyStatus();
   }
 
+  function pauseForMouseInteraction() {
+    if (!state.running) {
+      return;
+    }
+    state.interactionPausedUntil = performance.now() + USER_INTERACTION_PAUSE_MS;
+    state.scrollCarry = 0;
+  }
+
+  function handleMouseMove() {
+    if (!state.running) {
+      return;
+    }
+    if (state.mouseMoveDebounceTimer) {
+      clearTimeout(state.mouseMoveDebounceTimer);
+    }
+    // Trigger a short pause after mouse movement settles, so users can interact.
+    state.mouseMoveDebounceTimer = setTimeout(() => {
+      state.mouseMoveDebounceTimer = null;
+      pauseForMouseInteraction();
+    }, MOUSE_MOVE_DEBOUNCE_MS);
+  }
+
   function handleMessage(message, sender, sendResponse) {
     if (!message || typeof message !== "object") {
       return false;
@@ -361,6 +399,7 @@ function createController() {
     chrome.runtime.onMessage.removeListener(handleMessage);
     chrome.storage.onChanged.removeListener(handleStorageChange);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
+    window.removeEventListener("mousemove", handleMouseMove);
   }
 
   function handleStorageChange(changes, area) {
@@ -383,6 +422,7 @@ function createController() {
   chrome.runtime.onMessage.addListener(handleMessage);
   chrome.storage.onChanged.addListener(handleStorageChange);
   document.addEventListener("visibilitychange", handleVisibilityChange);
+  window.addEventListener("mousemove", handleMouseMove, { passive: true });
 
   return {
     initialize,

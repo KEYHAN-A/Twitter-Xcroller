@@ -1,0 +1,43 @@
+name: Build Extension Bundle
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Read extension version
+        id: meta
+        run: |
+          VERSION=$(jq -r '.version' manifest.json)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+      - name: Create extension zip
+        run: |
+          mkdir -p dist
+          ZIP_NAME="Twitter-Xcroller-v${{ steps.meta.outputs.version }}.zip"
+          zip -r "dist/$ZIP_NAME" \
+            manifest.json \
+            background.js \
+            content.js \
+            popup.html \
+            popup.css \
+            popup.js
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-bundle-v${{ steps.meta.outputs.version }}
+          path: dist/*.zip
+          if-no-files-found: error
