@@ -8,6 +8,9 @@ This document explains each user-facing setting used by X-Scroller.
 - `autoStartOnLoad`: Starts automation automatically after page load/initialization.
 - `pauseOnHidden`: Keeps state running but pauses movement when the tab is hidden.
 - `preferNewPostsButton`: Attempts to click X's top "new posts" prompt before doing `location.reload()`.
+- `interactionMode`:
+  - `auto_resume_on_mouse`: Debounced mouse movement pauses scroll briefly, then auto-resumes.
+  - `manual_resume_on_mouse`: Debounced mouse movement pauses scroll until explicitly resumed.
 
 ## Scrolling behavior
 
@@ -43,4 +46,5 @@ On each cycle, the extension picks a random delay between these values and sched
 
 - Values are normalized and clamped in both popup and content logic.
 - If `maxReloadMinutes` is set below `minReloadMinutes`, it is auto-corrected.
-- Mouse movement temporarily pauses auto-scroll using a short debounce window so manual interaction is not interrupted.
+- In manual mode, you can resume from either the popup "Continue in tab" action or the in-page floating "Continue" button.
+- If popup controls do not connect on a tab yet, refresh that X/Twitter tab once so the content script is active.

@@ -1,48 +1,88 @@
 :root {
-  color-scheme: light dark;
+  color-scheme: dark;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 body {
   margin: 0;
-  background: #0f172a;
-  color: #e5e7eb;
+  min-width: 360px;
+  background:
+    radial-gradient(110% 90% at 100% 0%, rgba(88, 130, 255, 0.28), transparent 60%),
+    radial-gradient(120% 90% at 0% 100%, rgba(76, 213, 187, 0.16), transparent 62%),
+    linear-gradient(160deg, #060c1d 0%, #090f21 46%, #050a15 100%);
+  color: #edf2ff;
 }
 
 .panel {
-  width: 310px;
-  padding: 12px;
+  width: 360px;
+  padding: 14px;
   display: grid;
-  gap: 10px;
+  gap: 12px;
 }
 
 .panel-header {
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+  gap: 12px;
 }
 
 h1 {
-  font-size: 15px;
+  font-size: 17px;
+  font-weight: 620;
+  letter-spacing: 0.01em;
   margin: 0;
 }
 
 .status-pill {
   font-size: 11px;
-  padding: 3px 8px;
+  font-weight: 600;
+  padding: 5px 10px;
   border-radius: 999px;
-  background: #374151;
+  border: 1px solid rgba(112, 132, 190, 0.36);
+  color: #dce8ff;
+  background: linear-gradient(180deg, rgba(34, 53, 90, 0.9), rgba(17, 28, 55, 0.9));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 
 .status-pill.running {
-  background: #1d4ed8;
+  color: #edfcff;
+  border-color: rgba(71, 182, 255, 0.54);
+  background: linear-gradient(180deg, rgba(20, 103, 204, 0.9), rgba(25, 73, 173, 0.85));
+}
+
+.status-pill.paused {
+  color: #fff8e8;
+  border-color: rgba(255, 193, 94, 0.56);
+  background: linear-gradient(180deg, rgba(160, 96, 18, 0.86), rgba(122, 72, 8, 0.88));
+}
+
+.subtle {
+  margin: 5px 0 0;
+  font-size: 12px;
+  color: rgba(216, 227, 255, 0.82);
+  line-height: 1.35;
+}
+
+.card {
+  border: 1px solid rgba(116, 143, 207, 0.26);
+  border-radius: 14px;
+  background: linear-gradient(160deg, rgba(32, 43, 72, 0.62), rgba(19, 27, 49, 0.58));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 16px 30px rgba(3, 8, 20, 0.34);
+  backdrop-filter: blur(15px) saturate(1.2);
+  -webkit-backdrop-filter: blur(15px) saturate(1.2);
+  padding: 10px 11px;
 }
 
 .row.checkbox {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 13px;
+  font-size: 12px;
+  color: rgba(233, 241, 255, 0.94);
+  padding: 2px 0;
 }
 
 .section {
@@ -57,9 +97,23 @@ h1 {
 }
 
 input[type="number"],
-input[type="range"] {
+input[type="range"],
+select {
   width: 100%;
   box-sizing: border-box;
+  border: 1px solid rgba(122, 149, 214, 0.36);
+  border-radius: 10px;
+  background: rgba(7, 13, 28, 0.42);
+  color: #edf2ff;
+}
+
+input[type="number"],
+select {
+  padding: 7px 8px;
+}
+
+input[type="checkbox"] {
+  accent-color: #4b97ff;
 }
 
 label {
@@ -70,7 +124,14 @@ label {
 .hint,
 .countdown {
   font-size: 12px;
-  color: #cbd5e1;
+  color: rgba(216, 227, 255, 0.86);
+}
+
+.guidance {
+  min-height: 30px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: rgba(176, 235, 226, 0.98);
 }
 
 .actions {
@@ -80,13 +141,56 @@ label {
 
 button {
   flex: 1;
-  border: 0;
-  border-radius: 8px;
+  border: 1px solid rgba(122, 149, 214, 0.36);
+  border-radius: 12px;
   padding: 8px 10px;
+  color: #edf2ff;
+  background: linear-gradient(180deg, rgba(30, 43, 74, 0.86), rgba(19, 30, 58, 0.84));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 12px 22px rgba(4, 10, 24, 0.28);
   cursor: pointer;
+  transition: transform 120ms ease, box-shadow 150ms ease, border-color 150ms ease;
+}
+
+button:hover {
+  transform: translateY(-1px);
+  border-color: rgba(146, 173, 237, 0.54);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.11),
+    0 14px 25px rgba(4, 10, 24, 0.35);
+}
+
+button:active {
+  transform: translateY(0);
+}
+
+button:focus-visible {
+  outline: 2px solid rgba(129, 192, 255, 0.7);
+  outline-offset: 2px;
 }
 
 button.primary {
-  background: #2563eb;
-  color: #fff;
+  border-color: rgba(86, 177, 255, 0.48);
+  background: linear-gradient(180deg, rgba(35, 126, 234, 0.94), rgba(27, 96, 212, 0.9));
+  color: #f6fbff;
+}
+
+button.primary-soft {
+  border-color: rgba(110, 199, 233, 0.42);
+  background: linear-gradient(180deg, rgba(41, 151, 177, 0.82), rgba(31, 113, 135, 0.86));
+}
+
+.resume-button {
+  width: 100%;
+  flex: none;
+  border-color: rgba(255, 203, 128, 0.56);
+  color: #fff8ea;
+  background: linear-gradient(180deg, rgba(171, 110, 24, 0.92), rgba(138, 85, 12, 0.9));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  button {
+    transition: none;
+  }
 }

@@ -3,6 +3,7 @@ const DEFAULT_CONFIG = {
   autoStartOnLoad: true,
   pauseOnHidden: true,
   preferNewPostsButton: true,
+  interactionMode: "auto_resume_on_mouse",
   baseStepPx: 1.4,
   tickMs: 70,
   startupDelaySec: 3,
@@ -15,6 +16,7 @@ const el = {
   autoStartOnLoad: document.getElementById("autoStartOnLoad"),
   pauseOnHidden: document.getElementById("pauseOnHidden"),
   preferNewPostsButton: document.getElementById("preferNewPostsButton"),
+  interactionMode: document.getElementById("interactionMode"),
   baseStepPx: document.getElementById("baseStepPx"),
   tickMs: document.getElementById("tickMs"),
   startupDelaySec: document.getElementById("startupDelaySec"),
@@ -22,10 +24,13 @@ const el = {
   maxReloadMinutes: document.getElementById("maxReloadMinutes"),
   speedValue: document.getElementById("speedValue"),
   countdown: document.getElementById("countdown"),
+  guidance: document.getElementById("guidance"),
   statusPill: document.getElementById("statusPill"),
+  statusDetail: document.getElementById("statusDetail"),
   saveButton: document.getElementById("saveButton"),
   applyButton: document.getElementById("applyButton"),
-  toggleButton: document.getElementById("toggleButton")
+  toggleButton: document.getElementById("toggleButton"),
+  resumeButton: document.getElementById("resumeButton")
 };
 
 let latestStatus = null;
@@ -39,12 +44,16 @@ function normalizeConfig(raw) {
   const cfg = { ...DEFAULT_CONFIG, ...raw };
   const minReloadMinutes = clamp(Number(cfg.minReloadMinutes) || DEFAULT_CONFIG.minReloadMinutes, 0.5, 240);
   const maxReloadMinutes = clamp(Number(cfg.maxReloadMinutes) || DEFAULT_CONFIG.maxReloadMinutes, minReloadMinutes, 240);
+  const interactionMode = cfg.interactionMode === "manual_resume_on_mouse"
+    ? "manual_resume_on_mouse"
+    : "auto_resume_on_mouse";
 
   return {
     enabled: Boolean(cfg.enabled),
     autoStartOnLoad: Boolean(cfg.autoStartOnLoad),
     pauseOnHidden: Boolean(cfg.pauseOnHidden),
     preferNewPostsButton: Boolean(cfg.preferNewPostsButton),
+    interactionMode,
     baseStepPx: clamp(Number(cfg.baseStepPx) || DEFAULT_CONFIG.baseStepPx, 0.5, 8),
     tickMs: clamp(Math.round(Number(cfg.tickMs) || DEFAULT_CONFIG.tickMs), 30, 500),
     startupDelaySec: clamp(Number(cfg.startupDelaySec) || DEFAULT_CONFIG.startupDelaySec, 0, 60),
@@ -59,6 +68,7 @@ function configFromForm() {
     autoStartOnLoad: el.autoStartOnLoad.checked,
     pauseOnHidden: el.pauseOnHidden.checked,
     preferNewPostsButton: el.preferNewPostsButton.checked,
+    interactionMode: el.interactionMode.value,
     baseStepPx: Number(el.baseStepPx.value),
     tickMs: Number(el.tickMs.value),
     startupDelaySec: Number(el.startupDelaySec.value),
@@ -72,6 +82,7 @@ function fillForm(config) {
   el.autoStartOnLoad.checked = config.autoStartOnLoad;
   el.pauseOnHidden.checked = config.pauseOnHidden;
   el.preferNewPostsButton.checked = config.preferNewPostsButton;
+  el.interactionMode.value = config.interactionMode;
   el.baseStepPx.value = String(config.baseStepPx);
   el.tickMs.value = String(config.tickMs);
   el.startupDelaySec.value = String(config.startupDelaySec);
@@ -107,9 +118,26 @@ async function sendToActiveTab(payload) {
 function renderStatus(status) {
   latestStatus = status || null;
   const running = Boolean(status?.running);
-  el.statusPill.textContent = running ? "Running" : "Paused";
+  const isInteractionPaused = Boolean(status?.interactionPaused);
+  const pausedManually = isInteractionPaused && status?.pauseReason === "mouse_interaction";
+
+  if (running && isInteractionPaused) {
+    el.statusPill.textContent = "Paused";
+    el.statusDetail.textContent = pausedManually
+      ? "Paused by mouse interaction. Click Continue to resume."
+      : "Auto-scrolling is briefly paused while you interact.";
+  } else if (running) {
+    el.statusPill.textContent = "Running";
+    el.statusDetail.textContent = "Auto-scroll is active on this tab.";
+  } else {
+    el.statusPill.textContent = "Stopped";
+    el.statusDetail.textContent = "Automation is currently stopped.";
+  }
+
   el.statusPill.classList.toggle("running", running);
+  el.statusPill.classList.toggle("paused", running && isInteractionPaused);
   el.toggleButton.textContent = running ? "Stop" : "Start";
+  el.resumeButton.hidden = !Boolean(status?.canResumeInteraction);
 }
 
 function formatRemaining(ms) {
@@ -132,11 +160,21 @@ function renderCountdown() {
   el.countdown.textContent = `Next reload: ${formatRemaining(remaining)}`;
 }
 
+function setGuidance(message) {
+  el.guidance.textContent = message || "";
+}
+
+function renderNoTabHint() {
+  setGuidance("Open x.com or twitter.com. If this is your first time on that tab, refresh once to load the extension.");
+}
+
 async function refreshFromTab() {
   const result = await sendToActiveTab({ type: "cts:getStatus" });
   if (!result) {
     renderStatus({ running: false, nextReloadAt: null });
-    el.countdown.textContent = "Open x.com or twitter.com tab";
+    el.statusDetail.textContent = "Open an X/Twitter tab to connect.";
+    el.countdown.textContent = "Next reload: --";
+    renderNoTabHint();
     return;
   }
   renderStatus(result.status);
@@ -144,6 +182,7 @@ async function refreshFromTab() {
     fillForm(normalizeConfig(result.config));
   }
   renderCountdown();
+  setGuidance("");
 }
 
 async function saveConfig() {
@@ -159,7 +198,10 @@ async function applyConfigToTab() {
   if (response?.status) {
     renderStatus(response.status);
     renderCountdown();
+    setGuidance("");
+    return;
   }
+  renderNoTabHint();
 }
 
 async function toggleRunning() {
@@ -168,7 +210,23 @@ async function toggleRunning() {
   if (response?.status) {
     renderStatus(response.status);
     renderCountdown();
+    setGuidance("");
+    return;
   }
+  if (action === "cts:start") {
+    renderNoTabHint();
+  }
+}
+
+async function resumeInteractionPause() {
+  const response = await sendToActiveTab({ type: "cts:resumeAfterInteraction" });
+  if (response?.status) {
+    renderStatus(response.status);
+    renderCountdown();
+    setGuidance("");
+    return;
+  }
+  renderNoTabHint();
 }
 
 async function initialize() {
@@ -186,6 +244,7 @@ async function initialize() {
   el.saveButton.addEventListener("click", saveConfig);
   el.applyButton.addEventListener("click", applyConfigToTab);
   el.toggleButton.addEventListener("click", toggleRunning);
+  el.resumeButton.addEventListener("click", resumeInteractionPause);
 
   countdownTimer = setInterval(renderCountdown, 1000);
 }

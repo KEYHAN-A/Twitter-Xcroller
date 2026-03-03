@@ -1,6 +1,6 @@
 # X-Scroller
 
-`X-Scroller` is a Manifest V3 Chrome extension that keeps your X/Twitter timeline moving with smooth auto-scroll, mouse-interaction-aware pause, randomized refresh, and optional promoted-post skipping.
+`X-Scroller` is a Manifest V3 Chrome extension that keeps your X/Twitter timeline moving with smooth auto-scroll, configurable mouse-interaction pause modes, randomized refresh, and optional promoted-post skipping.
 
 ## Why this project exists
 
@@ -10,7 +10,9 @@ X-Scroller provides a lightweight way to keep a timeline active while reducing r
 ## Features
 
 - Smooth continuous scrolling tuned for long sessions
-- Debounced mouse-move detection that pauses auto-scroll so you can interact
+- Two mouse interaction modes:
+  - Debounced pause with automatic resume
+  - Pause-until-continue mode with resume controls in popup and in-page button
 - Randomized refresh interval (`minReloadMinutes` to `maxReloadMinutes`)
 - Optional preference for the in-feed **new posts** button before full reload
 - Promoted/ad post detection and buffered skip movement
@@ -38,7 +40,7 @@ X-Scroller provides a lightweight way to keep a timeline active while reducing r
 1. Open `https://x.com` or `https://twitter.com`
 2. Click the extension icon
 3. Configure settings in the popup
-4. Click **Apply to tab**
+4. Click **Apply to tab** (if controls do not respond on a tab, refresh that tab once)
 5. Use **Start / Stop** as needed
 
 ## Development notes
@@ -51,6 +53,12 @@ X-Scroller provides a lightweight way to keep a timeline active while reducing r
 
 - Every push to `main` (and manual workflow runs) builds a zip bundle in GitHub Actions.
 - Download the extension package from the run artifacts named `extension-bundle-v<version>`.
+- Latest Actions run artifacts: `https://github.com/KEYHAN-A/Twitter-Xcroller/actions/workflows/build-extension.yml`
+
+## Download
+
+- Latest stable release: `https://github.com/KEYHAN-A/Twitter-Xcroller/releases/latest`
+- All releases (with zip assets): `https://github.com/KEYHAN-A/Twitter-Xcroller/releases`
 
 ## Limitations
 

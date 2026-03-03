@@ -9,37 +9,47 @@
   <body>
     <main class="panel">
       <header class="panel-header">
-        <h1>X-Scroller</h1>
+        <div>
+          <h1>X-Scroller</h1>
+          <p id="statusDetail" class="subtle">Checking active tab...</p>
+        </div>
         <span id="statusPill" class="status-pill">Checking...</span>
       </header>
 
-      <label class="row checkbox">
-        <input id="enabled" type="checkbox" />
-        <span>Enable automation</span>
-      </label>
+      <section class="card toggles">
+        <label class="row checkbox">
+          <input id="enabled" type="checkbox" />
+          <span>Enable automation</span>
+        </label>
+        <label class="row checkbox">
+          <input id="autoStartOnLoad" type="checkbox" />
+          <span>Auto-start on page load</span>
+        </label>
+        <label class="row checkbox">
+          <input id="pauseOnHidden" type="checkbox" />
+          <span>Pause when tab is hidden</span>
+        </label>
+        <label class="row checkbox">
+          <input id="preferNewPostsButton" type="checkbox" />
+          <span>Prefer "new posts" over full reload</span>
+        </label>
+      </section>
 
-      <label class="row checkbox">
-        <input id="autoStartOnLoad" type="checkbox" />
-        <span>Auto-start on page load</span>
-      </label>
+      <section class="card section">
+        <label for="interactionMode">Mouse interaction mode</label>
+        <select id="interactionMode">
+          <option value="auto_resume_on_mouse">Pause briefly, then auto-resume</option>
+          <option value="manual_resume_on_mouse">Pause until I click Continue</option>
+        </select>
+      </section>
 
-      <label class="row checkbox">
-        <input id="pauseOnHidden" type="checkbox" />
-        <span>Pause when tab is hidden</span>
-      </label>
-
-      <label class="row checkbox">
-        <input id="preferNewPostsButton" type="checkbox" />
-        <span>Prefer "new posts" button over reload</span>
-      </label>
-
-      <section class="section">
+      <section class="card section">
         <label for="baseStepPx">Scroll speed</label>
         <input id="baseStepPx" type="range" min="0.5" max="8" step="0.1" />
         <div id="speedValue" class="hint">1.4 px/tick</div>
       </section>
 
-      <section class="section two-col">
+      <section class="card section two-col">
         <label>
           Min reload (min)
           <input id="minReloadMinutes" type="number" min="0.5" max="240" step="0.5" />
@@ -50,7 +60,7 @@
         </label>
       </section>
 
-      <section class="section two-col">
+      <section class="card section two-col">
         <label>
           Tick ms
           <input id="tickMs" type="number" min="30" max="500" step="5" />
@@ -62,12 +72,14 @@
       </section>
 
       <div id="countdown" class="countdown">Next reload: --</div>
+      <div id="guidance" class="guidance" role="status"></div>
 
       <footer class="actions">
         <button id="saveButton">Save</button>
         <button id="applyButton" class="primary">Apply to tab</button>
-        <button id="toggleButton">Start</button>
+        <button id="toggleButton" class="primary-soft">Start</button>
       </footer>
+      <button id="resumeButton" class="resume-button" hidden>Continue in tab</button>
     </main>
     <script src="popup.js"></script>
   </body>

@@ -5,6 +5,7 @@ const DEFAULT_CONFIG = {
   autoStartOnLoad: true,
   pauseOnHidden: true,
   preferNewPostsButton: true,
+  interactionMode: "auto_resume_on_mouse",
   baseStepPx: 1.4,
   tickMs: 70,
   startupDelaySec: 3,
@@ -23,12 +24,16 @@ function normalizeConfig(raw) {
   const cfg = { ...DEFAULT_CONFIG, ...(raw || {}) };
   const minReloadMinutes = clamp(Number(cfg.minReloadMinutes) || DEFAULT_CONFIG.minReloadMinutes, 0.5, 240);
   const maxReloadMinutes = clamp(Number(cfg.maxReloadMinutes) || DEFAULT_CONFIG.maxReloadMinutes, minReloadMinutes, 240);
+  const interactionMode = cfg.interactionMode === "manual_resume_on_mouse"
+    ? "manual_resume_on_mouse"
+    : "auto_resume_on_mouse";
 
   return {
     enabled: Boolean(cfg.enabled),
     autoStartOnLoad: Boolean(cfg.autoStartOnLoad),
     pauseOnHidden: Boolean(cfg.pauseOnHidden),
     preferNewPostsButton: Boolean(cfg.preferNewPostsButton),
+    interactionMode,
     baseStepPx: clamp(Number(cfg.baseStepPx) || DEFAULT_CONFIG.baseStepPx, 0.5, 8),
     tickMs: clamp(Math.round(Number(cfg.tickMs) || DEFAULT_CONFIG.tickMs), 30, 500),
     startupDelaySec: clamp(Number(cfg.startupDelaySec) || DEFAULT_CONFIG.startupDelaySec, 0, 60),
@@ -74,7 +79,11 @@ function createController() {
     startDelayTimer: null,
     nextReloadAt: null,
     interactionPausedUntil: 0,
-    mouseMoveDebounceTimer: null
+    mouseMoveDebounceTimer: null,
+    manualPauseActive: false,
+    pauseReason: null,
+    floatingResumeButton: null,
+    floatingResumeStyles: null
   };
 
   function notifyStatus() {
@@ -105,6 +114,77 @@ function createController() {
     state.scrollCarry = 0;
     state.nextReloadAt = null;
     state.interactionPausedUntil = 0;
+    state.manualPauseActive = false;
+    state.pauseReason = null;
+    renderFloatingResumeButton();
+  }
+
+  function ensureFloatingResumeStyles() {
+    if (state.floatingResumeStyles?.isConnected) {
+      return;
+    }
+    const style = document.createElement("style");
+    style.id = "ctsFloatingResumeStyles";
+    style.textContent = `
+      #ctsFloatingResumeButton {
+        position: fixed;
+        top: calc(16px + env(safe-area-inset-top));
+        right: calc(16px + env(safe-area-inset-right));
+        z-index: 2147483647;
+        border: 1px solid rgba(255, 255, 255, 0.28);
+        border-radius: 999px;
+        padding: 10px 14px;
+        font: 600 12px/1 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0.01em;
+        color: #eff6ff;
+        background: linear-gradient(180deg, rgba(33, 59, 106, 0.55), rgba(10, 18, 38, 0.52));
+        box-shadow: 0 14px 34px rgba(6, 10, 22, 0.35);
+        backdrop-filter: blur(18px) saturate(1.2);
+        -webkit-backdrop-filter: blur(18px) saturate(1.2);
+        cursor: pointer;
+        transition: transform 120ms ease, box-shadow 160ms ease;
+      }
+      #ctsFloatingResumeButton:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 18px 38px rgba(8, 12, 28, 0.42);
+      }
+      #ctsFloatingResumeButton:active {
+        transform: translateY(0);
+      }
+    `;
+    document.documentElement.appendChild(style);
+    state.floatingResumeStyles = style;
+  }
+
+  function renderFloatingResumeButton() {
+    const shouldShow = state.config.interactionMode === "manual_resume_on_mouse"
+      && (state.manualPauseActive || !state.running);
+
+    if (!shouldShow) {
+      if (state.floatingResumeButton?.isConnected) {
+        state.floatingResumeButton.remove();
+      }
+      state.floatingResumeButton = null;
+      return;
+    }
+
+    ensureFloatingResumeStyles();
+    if (!state.floatingResumeButton?.isConnected) {
+      const button = document.createElement("button");
+      button.id = "ctsFloatingResumeButton";
+      button.type = "button";
+      button.addEventListener("click", () => {
+        if (state.running && state.manualPauseActive) {
+          resumeAfterInteraction();
+          return;
+        }
+        start();
+      });
+      document.documentElement.appendChild(button);
+      state.floatingResumeButton = button;
+    }
+
+    state.floatingResumeButton.textContent = state.running ? "Continue" : "Start";
   }
 
   function runSmoothScrollFrame(timestamp) {
@@ -123,7 +203,7 @@ function createController() {
       return;
     }
 
-    if (timestamp < state.interactionPausedUntil) {
+    if (state.manualPauseActive || timestamp < state.interactionPausedUntil) {
       state.lastFrameTime = timestamp;
       state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
       return;
@@ -278,6 +358,9 @@ function createController() {
     state.lastAdSkipAt = 0;
     state.adSkipCooldownMs = 2200;
     state.scrollCarry = 0;
+    state.manualPauseActive = false;
+    state.pauseReason = null;
+    renderFloatingResumeButton();
     state.nextDriftAt = performance.now() + randomBetween(800, 1800);
     state.nextAdCheckAt = performance.now() + randomBetween(500, 900);
     state.animationFrameId = requestAnimationFrame(runSmoothScrollFrame);
@@ -296,6 +379,7 @@ function createController() {
     state.running = true;
     const delay = Math.round(state.config.startupDelaySec * 1000);
     state.startDelayTimer = setTimeout(runLoops, delay);
+    renderFloatingResumeButton();
     notifyStatus();
     return getStatus();
   }
@@ -303,12 +387,18 @@ function createController() {
   function stop() {
     state.running = false;
     clearAllTimers();
+    renderFloatingResumeButton();
     notifyStatus();
     return getStatus();
   }
 
   function setConfig(nextConfig) {
     state.config = normalizeConfig(nextConfig);
+    if (state.config.interactionMode !== "manual_resume_on_mouse") {
+      state.manualPauseActive = false;
+      state.pauseReason = null;
+    }
+    renderFloatingResumeButton();
     if (state.config.enabled && state.running) {
       start();
     } else if (!state.config.enabled) {
@@ -320,12 +410,20 @@ function createController() {
   }
 
   function getStatus() {
+    const interactionPaused = state.manualPauseActive || performance.now() < state.interactionPausedUntil;
+    const pauseReason = state.manualPauseActive
+      ? state.pauseReason || "mouse_interaction"
+      : (interactionPaused ? "mouse_interaction_temporary" : null);
     return {
       running: state.running,
       enabled: state.config.enabled,
       nextReloadAt: state.nextReloadAt,
       pauseOnHidden: state.config.pauseOnHidden,
-      preferNewPostsButton: state.config.preferNewPostsButton
+      preferNewPostsButton: state.config.preferNewPostsButton,
+      interactionMode: state.config.interactionMode,
+      interactionPaused,
+      pauseReason,
+      canResumeInteraction: state.manualPauseActive
     };
   }
 
@@ -351,8 +449,36 @@ function createController() {
     if (!state.running) {
       return;
     }
+    if (state.config.interactionMode === "manual_resume_on_mouse") {
+      const didChange = !state.manualPauseActive;
+      state.manualPauseActive = true;
+      state.pauseReason = "mouse_interaction";
+      state.interactionPausedUntil = 0;
+      state.scrollCarry = 0;
+      renderFloatingResumeButton();
+      if (didChange) {
+        notifyStatus();
+      }
+      return;
+    }
+    state.manualPauseActive = false;
+    state.pauseReason = null;
     state.interactionPausedUntil = performance.now() + USER_INTERACTION_PAUSE_MS;
     state.scrollCarry = 0;
+    renderFloatingResumeButton();
+  }
+
+  function resumeAfterInteraction() {
+    if (!state.running || !state.manualPauseActive) {
+      return getStatus();
+    }
+    state.manualPauseActive = false;
+    state.pauseReason = null;
+    state.interactionPausedUntil = 0;
+    state.lastFrameTime = null;
+    renderFloatingResumeButton();
+    notifyStatus();
+    return getStatus();
   }
 
   function handleMouseMove() {
@@ -384,6 +510,9 @@ function createController() {
       case "cts:stop":
         sendResponse({ status: stop(), config: state.config });
         return true;
+      case "cts:resumeAfterInteraction":
+        sendResponse({ status: resumeAfterInteraction(), config: state.config });
+        return true;
       case "cts:applyConfig": {
         const config = setConfig(message.config || {});
         sendResponse({ status: getStatus(), config });
@@ -400,6 +529,12 @@ function createController() {
     chrome.storage.onChanged.removeListener(handleStorageChange);
     document.removeEventListener("visibilitychange", handleVisibilityChange);
     window.removeEventListener("mousemove", handleMouseMove);
+    if (state.floatingResumeButton?.isConnected) {
+      state.floatingResumeButton.remove();
+    }
+    if (state.floatingResumeStyles?.isConnected) {
+      state.floatingResumeStyles.remove();
+    }
   }
 
   function handleStorageChange(changes, area) {
